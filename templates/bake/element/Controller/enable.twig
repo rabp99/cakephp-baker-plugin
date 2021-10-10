@@ -1,0 +1,47 @@
+{#
+/**
+ * CakePHP(tm) : Rapid Development Framework (http://cakephp.org)
+ * Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
+ *
+ * Licensed under The MIT License
+ * For full copyright and license information, please see the LICENSE.txt
+ * Redistributions of files must retain the above copyright notice.
+ *
+ * @copyright     Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
+ * @link          http://cakephp.org CakePHP(tm) Project
+ * @since         2.0.0
+ * @license       http://www.opensource.org/licenses/mit-license.php MIT License
+ */
+#}
+{% set primaryKey = ApiRest.getPrimaryKey(modelObj) %}
+    /**
+     * Enable method
+     *
+     * @param string|null $id {{ singularHumanName }} id.
+     * @return \Cake\Http\Response|null|void Redirects on successful enable, renders view otherwise.
+     * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
+     */
+    public function enable() {
+        $this->getRequest()->allowMethod(['POST']);
+{% if 'id' in primaryKey %}
+        $id = $this->getRequest()->getData("id");
+        ${{ singularName }} = $this->{{ currentModelName }}->get($id);
+{% else %}
+{% for key in primaryKey %}
+        ${{ key|variable }} = $this->getRequest()->getData('{{ key }}');
+{% endfor %}
+        ${{ singularName }} = $this->{{ currentModelName }}->get([{{ ApiRest.getPrimaryKeyVars(primaryKey) }}]);
+{% endif %}
+        ${{ singularName }}->state = 1;
+        $errors = null;
+        
+        if ($this->{{ currentModelName }}->save(${{ singularName }})) {
+            $message = __('El {{ singularHumanName|lower }} fue habilitado correctamente');
+        } else {
+            $message = __('El {{ singularHumanName|lower }} no fue habilitado correctamente');
+            $errors = ${{ singularName }}->getErrors();
+            $this->setResponse($this->getResponse()->withStatus(500));
+        }
+        $this->set(compact('{{ singularName }}', 'message', 'errors'));
+        $this->viewBuilder()->setOption('serialize', true);
+    }

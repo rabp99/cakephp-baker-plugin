@@ -1,0 +1,68 @@
+{#
+/**
+ * CakePHP(tm) : Rapid Development Framework (http://cakephp.org)
+ * Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
+ *
+ * Licensed under The MIT License
+ * For full copyright and license information, please see the LICENSE.txt
+ * Redistributions of files must retain the above copyright notice.
+ *
+ * @copyright     Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
+ * @link          http://cakephp.org CakePHP(tm) Project
+ * @since         2.0.0
+ * @license       http://www.opensource.org/licenses/mit-license.php MIT License
+ */
+#}
+{% set fields = ApiRest.getFieldsForFilter(modelObj) %}
+    /**
+     * Index method
+     *
+     * @return \Cake\Http\Response|null|void Renders view
+     */
+    public function index() {
+        $this->getRequest()->allowMethod("GET");
+        $sortColumn = $this->getRequest()->getQuery("sort_column");
+        $sortOrder = $this->getRequest()->getQuery("sort_order");
+{% for field in fields %}
+        ${{ field|variable }} = $this->getRequest()->getQuery('{{ field }}');
+{% endfor %}
+
+        $itemsPerPage = $this->request->getQuery('itemsPerPage');
+       
+        $query = $this->{{ currentModelName }}->find();
+        
+        if ($sortColumn && $sortOrder) {
+            $query->order([$sortColumn => $sortOrder]);
+        }
+        
+        // filters        
+{%- for field in fields %}
+    
+        if (${{ field|variable }}) {
+           $query->where(['{{ currentModelName }}.{{ field }}' => ${{ field|variable }}]);
+        }
+{% endfor %}
+
+        $count = $query->count();
+        if (!$itemsPerPage) {
+            $itemsPerPage = $count;
+        }
+        
+{% set belongsTo = Bake.aliasExtractor(modelObj, 'BelongsTo') %}
+{% if belongsTo %}
+        $this->paginate = [
+            'contain' => {{ Bake.exportArray(belongsTo)|raw }},
+        ];
+{% endif %}
+        ${{ pluralName }} = $this->paginate($query, [
+            'limit' => $itemsPerPage
+        ]);
+        $paginate = $this->request->getAttribute('paging')['{{ currentModelName }}'];
+        $pagination = [
+            'totalItems' => $paginate['count'],
+            'itemsPerPage' =>  $paginate['perPage']
+        ];
+        
+        $this->set(compact('{{ pluralName }}', 'pagination', 'count'));
+        $this->viewBuilder()->setOption('serialize', true);
+    }
